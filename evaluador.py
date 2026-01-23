@@ -1,4 +1,6 @@
-import os                 # <<--- IMPORTANTE PARA VARIABLES DE ENTORNO
+import os
+print("✅ Ejecutando evaluador.py y OS importado correctamente")
+
 import yfinance as yf
 import csv
 from datetime import datetime
@@ -125,3 +127,4 @@ try:
     print("📧 Correo enviado correctamente")
 except Exception as e:
     print("❌ Error al enviar correo:", e)
+
