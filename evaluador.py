@@ -9,9 +9,9 @@ from portfolio import PORTAFOLIO
 # =========================
 # CONFIGURACIÓN DE CORREO
 # =========================
-CORREO_EMISOR = "gustavovalderaeguiluz@gmail.com"
-CONTRASENA_APP = "jvnk pkbn bwms kukv"
-CORREO_DESTINO = "gustavovalderaeguiluz@gmail.com"
+CORREO_EMISOR = os.environ.get("EMAIL_USER")         # Tu correo emisor
+CONTRASENA_APP = os.environ.get("EMAIL_APP_PASSWORD") # Contraseña específica de la app
+CORREO_DESTINO = os.environ.get("EMAIL_TO")         # Correo destino
 
 # =========================
 # VARIABLES GENERALES
@@ -127,3 +127,4 @@ try:
     print("📧 Correo enviado correctamente")
 except Exception as e:
     print("❌ Error al enviar correo:", e)
+
