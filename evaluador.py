@@ -1,3 +1,4 @@
+import os
 import yfinance as yf
 import csv
 from datetime import datetime
@@ -7,11 +8,14 @@ from email.mime.multipart import MIMEMultipart
 from portfolio import PORTAFOLIO
 
 # =========================
-# CONFIGURACIÓN DE CORREO
+# VARIABLES DE ENTORNO
 # =========================
-CORREO_EMISOR = os.environ.get("EMAIL_USER")         # Tu correo emisor
-CONTRASENA_APP = os.environ.get("EMAIL_APP_PASSWORD") # Contraseña específica de la app
-CORREO_DESTINO = os.environ.get("EMAIL_TO")         # Correo destino
+CORREO_EMISOR = os.environ.get("EMAIL_USER")
+CONTRASENA_APP = os.environ.get("EMAIL_APP_PASSWORD")
+CORREO_DESTINO = os.environ.get("EMAIL_TO")
+
+if not CORREO_EMISOR or not CONTRASENA_APP or not CORREO_DESTINO:
+    raise ValueError("❌ ERROR: Define EMAIL_USER, EMAIL_APP_PASSWORD y EMAIL_TO como variables de entorno")
 
 # =========================
 # VARIABLES GENERALES
@@ -19,14 +23,9 @@ CORREO_DESTINO = os.environ.get("EMAIL_TO")         # Correo destino
 total_invertido = 0
 total_actual = 0
 fecha_hoy = datetime.now().strftime("%Y-%m-%d")
-
-# CSV (solo técnico, se queda en la PC)
 archivo_csv = "historial_portafolio.csv"
-
-# Mensaje completo (para correo y consola)
-mensaje_completo = []
-mensaje_completo.append("📊 EVALUACIÓN DIARIA DEL PORTAFOLIO\n")
-print("📊 EVALUACIÓN DIARIA\n")
+mensaje_completo = [f"📊 EVALUACIÓN DIARIA DEL PORTAFOLIO ({fecha_hoy})\n"]
+print(f"📊 EVALUACIÓN DIARIA ({fecha_hoy})\n")
 
 # =========================
 # EVALUAR CADA ACTIVO
@@ -41,20 +40,21 @@ for ticker, datos in PORTAFOLIO.items():
         mensaje_completo.append(linea)
         continue
 
-    # Precio actual de la acción
     precio_actual = float(hist["Close"].iloc[-1])
-    # Valor de mi inversión actual
     valor_inversion = precio_actual * datos["cantidad"]
-    # Ganancia de mi inversión
     ganancia = valor_inversion - datos["invertido"]
     roi = (ganancia / datos["invertido"]) * 100
 
     total_invertido += datos["invertido"]
     total_actual += valor_inversion
 
-    # Emoji según rendimiento
-    if roi > 0:
+    # Emojis según rendimiento
+    if roi > 5:
+        emoji = "🚀🟢"
+    elif roi > 0:
         emoji = "🟢"
+    elif roi < -5:
+        emoji = "💥🔴"
     elif roi < 0:
         emoji = "🔴"
     else:
@@ -64,7 +64,7 @@ for ticker, datos in PORTAFOLIO.items():
         f"{emoji} {ticker} ({datos['nombre']})\n"
         f"   📦 Cantidad de acciones: {datos['cantidad']}\n"
         f"   💰 Inversión inicial: ${datos['invertido']:.2f}\n"
-        f"   📈 Valor actual de la inversión: ${valor_inversion:.2f}\n"
+        f"   📈 Valor actual: ${valor_inversion:.2f}\n"
         f"   💵 Ganancia: ${ganancia:+.2f} ({roi:+.2f}%)\n"
     )
 
@@ -75,21 +75,19 @@ for ticker, datos in PORTAFOLIO.items():
 # TOTALES DEL PORTAFOLIO
 # =========================
 resultado = total_actual - total_invertido
-
 mensaje_totales = (
     "---------------------------\n"
     f"📥 TOTAL INVERTIDO: ${total_invertido:.2f}\n"
     f"📤 TOTAL ACTUAL:   ${total_actual:.2f}\n"
     f"🏁 RESULTADO:      ${resultado:+.2f}\n"
 )
-
 print(mensaje_totales)
 mensaje_completo.append(mensaje_totales)
 
 mensaje_final = "\n".join(mensaje_completo)
 
 # =========================
-# GUARDAR CSV (FORMATO LIMPIO)
+# GUARDAR CSV
 # =========================
 try:
     existe = True
