@@ -18,7 +18,7 @@ if not CORREO_EMISOR or not CONTRASENA_APP or not CORREO_DESTINO:
     raise ValueError("❌ Faltan variables de entorno para el correo")
 
 # =========================
-# FECHA (SOLO FECHA, SIN HORA)
+# FECHA (SOLO FECHA)
 # =========================
 fecha_hoy = datetime.now().strftime("%Y-%m-%d")
 
@@ -40,14 +40,17 @@ total_invertido = 0.0
 total_actual = 0.0
 archivo_csv = "historial_portafolio.csv"
 
+# =========================
+# INICIO MENSAJE HTML
+# =========================
 mensaje = []
-mensaje.append("📊 EVALUACIÓN DIARIA DEL PORTAFOLIO\n")
+mensaje.append("<h1>📊 EVALUACIÓN DIARIA DEL PORTAFOLIO</h1>")
 
 # =========================
 # PROCESAR POR SECTORES
 # =========================
 for sector, tickers in SECTORES.items():
-    mensaje.append(f"\n📌 {sector}\n")
+    mensaje.append(f"<h2>📌 {sector}</h2>")
 
     for ticker in tickers:
         datos = PORTAFOLIO[ticker]
@@ -55,7 +58,7 @@ for sector, tickers in SECTORES.items():
         hist = accion.history(period="1d")
 
         if hist.empty:
-            mensaje.append(f"⚠️ {ticker}: sin datos disponibles\n")
+            mensaje.append(f"<p>⚠️ {ticker}: sin datos disponibles</p>")
             continue
 
         precio_actual = float(hist["Close"].iloc[-1])
@@ -68,18 +71,25 @@ for sector, tickers in SECTORES.items():
 
         if roi > 0:
             emoji = "🟢"
+            color = "green"
         elif roi < 0:
             emoji = "🔴"
+            color = "red"
         else:
             emoji = "⚪"
+            color = "black"
 
-        bloque = (
-            f"{emoji} {ticker} ({datos['nombre']})\n"
-            f"   📦 Cantidad de acciones: {datos['cantidad']}\n"
-            f"   💰 Inversión inicial: ${datos['invertido']:.2f}\n"
-            f"   📈 Valor actual de la inversión: ${valor_actual:.2f}\n"
-            f"   💵 Ganancia: ${ganancia:+.2f} ({roi:+.2f}%)\n"
-        )
+        bloque = f"""
+        <p>
+        <b>{emoji} {ticker} ({datos['nombre']})</b><br>
+        📦 Cantidad de acciones: {datos['cantidad']}<br>
+        💰 Inversión inicial: ${datos['invertido']:.2f}<br>
+        📈 Valor actual: ${valor_actual:.2f}<br>
+        💵 Ganancia: <b style="color:{color};">
+            ${ganancia:+.2f} ({roi:+.2f}%)
+        </b>
+        </p>
+        """
 
         mensaje.append(bloque)
 
@@ -88,16 +98,17 @@ for sector, tickers in SECTORES.items():
 # =========================
 resultado = total_actual - total_invertido
 
-mensaje_totales = (
-    "\n---------------------------\n"
-    f"📥 TOTAL INVERTIDO: ${total_invertido:.2f}\n"
-    f"📤 TOTAL ACTUAL:   ${total_actual:.2f}\n"
-    f"🏁 RESULTADO:      ${resultado:+.2f}\n"
-)
+mensaje.append(f"""
+<hr>
+<h2>📊 RESUMEN GENERAL</h2>
+<p>
+<b>📥 Total invertido:</b> ${total_invertido:.2f}<br>
+<b>📤 Total actual:</b> ${total_actual:.2f}<br>
+<b>🏁 Resultado:</b> ${resultado:+.2f}
+</p>
+""")
 
-mensaje.append(mensaje_totales)
-
-mensaje_final = "\n".join(mensaje)
+mensaje_final = "".join(mensaje)
 
 # =========================
 # GUARDAR CSV
@@ -116,14 +127,14 @@ with open(archivo_csv, "a", newline="") as f:
     ])
 
 # =========================
-# ENVIAR CORREO
+# ENVIAR CORREO (HTML)
 # =========================
 msg = MIMEMultipart()
 msg["From"] = CORREO_EMISOR
 msg["To"] = CORREO_DESTINO
 msg["Subject"] = f"📊 Portafolio Diario - {fecha_hoy}"
 
-msg.attach(MIMEText(mensaje_final, "plain"))
+msg.attach(MIMEText(mensaje_final, "html"))
 
 with smtplib.SMTP("smtp.gmail.com", 587) as server:
     server.starttls()
@@ -131,3 +142,4 @@ with smtplib.SMTP("smtp.gmail.com", 587) as server:
     server.send_message(msg)
 
 print("📧 Correo enviado correctamente")
+
