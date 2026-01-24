@@ -3,7 +3,8 @@ name: Evaluador Diario Portafolio
 on:
   workflow_dispatch:
   schedule:
-    -   cron: "46 23 * * *"   # 16:40 Perú (UTC-5)
+    - cron: "50 23 * * *"  # 18:50 Perú → 23:50 UTC
+
 
 
 jobs:
