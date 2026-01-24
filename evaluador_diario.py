@@ -8,14 +8,19 @@ from portfolio import PORTAFOLIO
 import os
 
 # =========================
-# CONFIGURACIÓN DE CORREO
+# CONFIGURACIÓN CORREO
 # =========================
-CORREO_EMISOR = os.environ.get("EMAIL_USER")
-CONTRASENA_APP = os.environ.get("EMAIL_APP_PASSWORD")
-CORREO_DESTINO = os.environ.get("EMAIL_TO")
+EMAIL_USER = os.environ.get("EMAIL_USER")
+EMAIL_PASS = os.environ.get("EMAIL_APP_PASSWORD")
+EMAIL_TO = os.environ.get("EMAIL_TO")
 
-if not CORREO_EMISOR or not CONTRASENA_APP or not CORREO_DESTINO:
-    raise ValueError("❌ Faltan variables de entorno para el correo")
+if not EMAIL_USER or not EMAIL_PASS or not EMAIL_TO:
+    raise ValueError("❌ Faltan variables de entorno del correo")
+
+# =========================
+# ARCHIVO CSV
+# =========================
+CSV_FILE = "historial_portafolio.csv"
 
 # =========================
 # FECHA
@@ -23,172 +28,94 @@ if not CORREO_EMISOR or not CONTRASENA_APP or not CORREO_DESTINO:
 fecha_hoy = datetime.now().strftime("%Y-%m-%d")
 
 # =========================
-# SECTORES
-# =========================
-SECTORES = {
-    "🧠 TECNOLOGÍA": ["NVDA", "PANW", "UBER", "TSLA"],
-    "🏥 SALUD": ["VHT"],
-    "💰 DIVIDENDOS": ["JEPI"],
-    "📈 S&P 500 / ÍNDICES": ["CSPX.L"],
-    "⚡ ENERGÍA": ["URA"]
-}
-
-# =========================
-# ALERTAS
-# =========================
-UMBRAL_ALERTA = 3  # %
-alertas = []
-
-# =========================
-# VARIABLES
-# =========================
-total_invertido = 0.0
-total_actual = 0.0
-ranking = []
-archivo_csv = "historial_portafolio.csv"
-
-# =========================
-# MENSAJE HTML
+# MENSAJE EMAIL
 # =========================
 mensaje = []
 mensaje.append("<h1>📊 Evaluación diaria del portafolio</h1>")
 
-# =========================
-# PROCESO POR SECTOR
-# =========================
-for sector, tickers in SECTORES.items():
-    mensaje.append(f"<h2>{sector}</h2>")
-
-    for ticker in tickers:
-        datos = PORTAFOLIO[ticker]
-        accion = yf.Ticker(ticker)
-        hist = accion.history(period="1d")
-
-        if hist.empty:
-            continue
-
-        precio_actual = float(hist["Close"].iloc[-1])
-        valor_actual = precio_actual * datos["cantidad"]
-        ganancia = valor_actual - datos["invertido"]
-        roi = (ganancia / datos["invertido"]) * 100
-
-        total_invertido += datos["invertido"]
-        total_actual += valor_actual
-
-        ranking.append((ticker, roi))
-
-        # =========================
-        # ALERTAS
-        # =========================
-        if roi >= UMBRAL_ALERTA:
-            alertas.append(f"🟢 <b>{ticker}</b> sube fuerte <b>+{roi:.2f}%</b>")
-        elif roi <= -UMBRAL_ALERTA:
-            alertas.append(f"🔴 <b>{ticker}</b> cae fuerte <b>{roi:.2f}%</b>")
-
-        color = "green" if roi >= 0 else "red"
-
-        # =========================
-        # BLOQUE DEL ACTIVO EN EL CORREO
-        # =========================
-        mensaje.append(f"""
-        <p>
-        <b>{ticker} ({datos['nombre']})</b><br>
-        📦 Cantidad de acciones: {datos['cantidad']}<br>
-        💰 Inversión inicial: ${datos['invertido']:.2f}<br>
-        📈 Valor actual: ${valor_actual:.2f}<br>
-        💵 Ganancia:
-        <b style="color:{color};">
-        ${ganancia:+.2f} ({roi:+.2f}%)
-        </b>
-        </p>
-        """)
-
-        # =========================
-        # GUARDAR CSV POR ACTIVO
-        # =========================
-        archivo_existe = os.path.isfile(archivo_csv)
-
-        with open(archivo_csv, "a", newline="", encoding="utf-8") as f:
-            fieldnames = [
-                "fecha",
-                "ticker",
-                "sector",
-                "cantidad",
-                "inversion_inicial",
-                "precio_actual",
-                "valor_actual",
-                "ganancia_usd",
-                "ganancia_pct"
-            ]
-
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-
-            if not archivo_existe:
-                writer.writeheader()
-
-            writer.writerow({
-                "fecha": fecha_hoy,
-                "ticker": ticker,
-                "sector": sector,
-                "cantidad": round(datos["cantidad"], 6),
-                "inversion_inicial": round(datos["invertido"], 2),
-                "precio_actual": round(precio_actual, 2),
-                "valor_actual": round(valor_actual, 2),
-                "ganancia_usd": round(ganancia, 2),
-                "ganancia_pct": round(roi, 2)
-            })
+total_invertido = 0.0
+total_actual = 0.0
+ranking = []
 
 # =========================
-# ALERTAS DEL DÍA
+# PROCESO POR ACTIVO
 # =========================
-if alertas:
-    mensaje.append("""
-    <hr>
-    <h2 style="color:red;">🚨 ALERTAS DEL DÍA</h2>
-    <ul>
+for ticker, datos in PORTAFOLIO.items():
+
+    accion = yf.Ticker(ticker)
+    hist = accion.history(period="1d")
+
+    if hist.empty:
+        continue
+
+    precio_cierre = float(hist["Close"].iloc[-1])
+    cantidad = datos["cantidad"]
+    invertido = datos["invertido"]
+
+    valor_actual = precio_cierre * cantidad
+    ganancia = valor_actual - invertido
+    ganancia_pct = (ganancia / invertido) * 100 if invertido > 0 else 0
+
+    total_invertido += invertido
+    total_actual += valor_actual
+    ranking.append((ticker, ganancia_pct))
+
+    color = "green" if ganancia >= 0 else "red"
+
+    # ----- BLOQUE EMAIL -----
+    mensaje.append(f"""
+    <p>
+    <b>{ticker} ({datos['nombre']})</b><br>
+    📦 Cantidad de acciones: {cantidad}<br>
+    💰 Inversión inicial: ${invertido:.2f}<br>
+    📈 Valor actual: ${valor_actual:.2f}<br>
+    💵 Ganancia:
+    <b style="color:{color};">
+    ${ganancia:+.2f} ({ganancia_pct:+.2f}%)
+    </b>
+    </p>
     """)
-    for alerta in alertas:
-        mensaje.append(f"<li>{alerta}</li>")
-    mensaje.append("</ul>")
+
+    # ----- GUARDAR CSV (ACCION x ACCION) -----
+    with open(CSV_FILE, "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            fecha_hoy,
+            ticker,
+            datos["nombre"],
+            cantidad,
+            round(invertido, 2),
+            round(precio_cierre, 2),
+            round(valor_actual, 2),
+            round(ganancia, 2),
+            round(ganancia_pct, 2)
+        ])
+
+# =========================
+# RESUMEN GENERAL
+# =========================
+resultado = total_actual - total_invertido
+resultado_pct = (resultado / total_invertido) * 100 if total_invertido > 0 else 0
+
+mensaje.append(f"""
+<hr>
+<h2>📌 Resumen general</h2>
+💰 Total invertido: ${total_invertido:.2f}<br>
+📈 Valor actual: ${total_actual:.2f}<br>
+💵 Resultado:
+<b style="color:{'green' if resultado >= 0 else 'red'};">
+${resultado:+.2f} ({resultado_pct:+.2f}%)
+</b>
+""")
 
 # =========================
 # RANKING
 # =========================
 ranking.sort(key=lambda x: x[1], reverse=True)
 
-mensaje.append("<hr><h2>🏆 Ranking del día</h2>")
-for i, (ticker, roi) in enumerate(ranking, 1):
-    mensaje.append(f"{i}️⃣ {ticker} ({roi:+.2f}%)<br>")
+mensaj
 
-# =========================
-# COMENTARIO ANALISTA
-# =========================
-mejor = ranking[0]
 
-mensaje.append(f"""
-<hr>
-<h2>🧠 Comentario del analista</h2>
-El portafolio muestra un comportamiento general estable.
-El activo más destacado de la jornada fue
-<b>{mejor[0]}</b>, con una variación de
-<b>{mejor[1]:+.2f}%</b>.
-""")
-
-# =========================
-# ENVIAR CORREO
-# =========================
-msg = MIMEMultipart()
-msg["From"] = CORREO_EMISOR
-msg["To"] = CORREO_DESTINO
-msg["Subject"] = f"📊 Evaluación diaria del portafolio - {fecha_hoy}"
-msg.attach(MIMEText("".join(mensaje), "html"))
-
-with smtplib.SMTP("smtp.gmail.com", 587) as server:
-    server.starttls()
-    server.login(CORREO_EMISOR, CONTRASENA_APP)
-    server.send_message(msg)
-
-print("📧 Correo enviado correctamente")
 
 
 
