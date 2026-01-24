@@ -18,67 +18,81 @@ if not CORREO_EMISOR or not CONTRASENA_APP or not CORREO_DESTINO:
     raise ValueError("❌ Faltan variables de entorno del correo")
 
 # =========================
-# VARIABLES
+# VARIABLES GENERALES
 # =========================
 total_invertido = 0.0
 total_actual = 0.0
+
+# Fecha solo para CSV (no para el mensaje)
 fecha_hoy = datetime.utcnow().strftime("%Y-%m-%d")
 
 archivo_csv = "historial_portafolio.csv"
 
+# =========================
+# MENSAJE DEL CORREO
+# =========================
 mensaje = []
-mensaje.append(f"📊 EVALUACIÓN DIARIA DEL PORTAFOLIO ({fecha_hoy})\n")
+mensaje.append("📊EVALUACIÓN DIARIA DEL PORTAFOLIO\n")
 
 # =========================
-# EVALUAR ACTIVOS
+# EVALUAR CADA ACTIVO
 # =========================
 for ticker, datos in PORTAFOLIO.items():
     accion = yf.Ticker(ticker)
     hist = accion.history(period="1d")
 
     if hist.empty:
-        mensaje.append(f"⚠️ {ticker}: sin datos disponibles\n")
+        mensaje.append(f"⚠️{ticker}: sin datos disponibles\n\n")
         continue
 
+    # Precio actual
     precio_actual = float(hist["Close"].iloc[-1])
+
+    # Valor actual de MI inversión
     valor_actual = precio_actual * datos["cantidad"]
+
+    # Ganancia / pérdida
     ganancia = valor_actual - datos["invertido"]
     roi = (ganancia / datos["invertido"]) * 100
 
+    # Acumulados
     total_invertido += datos["invertido"]
     total_actual += valor_actual
 
-    emoji = "🟢" if roi > 0 else "🔴" if roi < 0 else "⚪"
+    # Emoji según ganancia
+    emoji = "🟢" if ganancia > 0 else "🔴" if ganancia < 0 else "⚪"
 
+    # Bloque EXACTO como lo pediste
     mensaje.append(
-        f"{emoji} {ticker} ({datos['nombre']})\n"
-        f"   📦 Cantidad: {datos['cantidad']}\n"
-        f"   💰 Compra: ${datos['precio_compra']:.2f} | Actual: ${precio_actual:.2f}\n"
-        f"   💵 Ganancia: ${ganancia:+.2f} ({roi:+.2f}%)\n"
+        f"{emoji}{ticker} ({datos['nombre']})\n"
+        f"   📦Cantidad de acciones: {datos['cantidad']}\n"
+        f"   💰Inversión inicial: ${datos['invertido']:.2f}\n"
+        f"   📈Valor actual de la inversión: ${valor_actual:.2f}\n"
+        f"   💵Ganancia: ${ganancia:+.2f} ({roi:+.2f}%)\n\n"
     )
 
 # =========================
-# TOTALES
+# TOTALES DEL PORTAFOLIO
 # =========================
 resultado = total_actual - total_invertido
 
 mensaje.append(
     "---------------------------\n"
-    f"📥 TOTAL INVERTIDO: ${total_invertido:.2f}\n"
-    f"📤 TOTAL ACTUAL:   ${total_actual:.2f}\n"
-    f"🏁 RESULTADO:      ${resultado:+.2f}\n"
+    f"📥TOTAL INVERTIDO: ${total_invertido:.2f}\n"
+    f"📤TOTAL ACTUAL: ${total_actual:.2f}\n"
+    f"🏁RESULTADO: ${resultado:+.2f}\n"
 )
 
-mensaje_final = "\n".join(mensaje)
+mensaje_final = "".join(mensaje)
 
 # =========================
-# GUARDAR CSV (LOCAL DEL RUN)
+# GUARDAR CSV (DEL DÍA)
 # =========================
-existe = os.path.isfile(archivo_csv)
+archivo_existe = os.path.isfile(archivo_csv)
 
 with open(archivo_csv, "a", newline="") as f:
     writer = csv.writer(f)
-    if not existe:
+    if not archivo_existe:
         writer.writerow(["fecha", "total_invertido", "total_actual", "resultado"])
     writer.writerow([
         fecha_hoy,
@@ -93,7 +107,7 @@ with open(archivo_csv, "a", newline="") as f:
 msg = MIMEMultipart()
 msg["From"] = CORREO_EMISOR
 msg["To"] = CORREO_DESTINO
-msg["Subject"] = f"📊 Portafolio {fecha_hoy}"
+msg["Subject"] = "📊 Evaluación diaria del portafolio"
 
 msg.attach(MIMEText(mensaje_final, "plain"))
 
@@ -103,3 +117,4 @@ with smtplib.SMTP("smtp.gmail.com", 587) as server:
     server.send_message(msg)
 
 print("📧 Correo enviado correctamente")
+
