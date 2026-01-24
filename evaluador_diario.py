@@ -1,6 +1,6 @@
 import yfinance as yf
 import csv
-from datetime import datetime, timedelta
+from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -34,7 +34,7 @@ SECTORES = {
 }
 
 # =========================
-# CONFIG ALERTAS
+# ALERTAS
 # =========================
 UMBRAL_ALERTA = 3  # %
 alertas = []
@@ -67,7 +67,7 @@ for sector, tickers in SECTORES.items():
         if hist.empty:
             continue
 
-        precio_actual = hist["Close"].iloc[-1]
+        precio_actual = float(hist["Close"].iloc[-1])
         valor_actual = precio_actual * datos["cantidad"]
         ganancia = valor_actual - datos["invertido"]
         roi = (ganancia / datos["invertido"]) * 100
@@ -85,11 +85,15 @@ for sector, tickers in SECTORES.items():
 
         color = "green" if roi >= 0 else "red"
 
+        # 🔴 BLOQUE COMPLETO DEL ACTIVO (CORREGIDO)
         mensaje.append(f"""
         <p>
         <b>{ticker} ({datos['nombre']})</b><br>
-        Valor actual: ${valor_actual:.2f}<br>
-        Ganancia: <b style="color:{color};">
+        📦 Cantidad de acciones: {datos['cantidad']}<br>
+        💰 Inversión inicial: ${datos['invertido']:.2f}<br>
+        📈 Valor actual: ${valor_actual:.2f}<br>
+        💵 Ganancia:
+        <b style="color:{color};">
         ${ganancia:+.2f} ({roi:+.2f}%)
         </b>
         </p>
@@ -147,8 +151,10 @@ mejor = ranking[0]
 mensaje.append(f"""
 <hr>
 <h2>🧠 Comentario del analista</h2>
-El portafolio muestra un desempeño estable. El activo más destacado de la jornada fue
-<b>{mejor[0]}</b>, con una variación de <b>{mejor[1]:+.2f}%</b>.
+El portafolio muestra un desempeño estable.
+El activo más destacado de la jornada fue
+<b>{mejor[0]}</b>, con una variación de
+<b>{mejor[1]:+.2f}%</b>.
 """)
 
 # =========================
@@ -161,7 +167,12 @@ with open(archivo_csv, "a", newline="") as f:
     writer = csv.writer(f)
     if not archivo_existe:
         writer.writerow(["fecha", "total_invertido", "total_actual", "resultado"])
-    writer.writerow([fecha_hoy, total_invertido, total_actual, resultado])
+    writer.writerow([
+        fecha_hoy,
+        round(total_invertido, 2),
+        round(total_actual, 2),
+        round(resultado, 2)
+    ])
 
 # =========================
 # ENVIAR CORREO
@@ -178,6 +189,7 @@ with smtplib.SMTP("smtp.gmail.com", 587) as server:
     server.send_message(msg)
 
 print("📧 Correo enviado correctamente")
+
 
 
 
