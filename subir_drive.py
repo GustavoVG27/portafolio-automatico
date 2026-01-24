@@ -1,30 +1,41 @@
 import os
 import json
-from google.oauth2.service_account import Credentials
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+# =========================
+# CONFIG
+# =========================
+ARCHIVO = "historial_portafolio.csv"
+SHARED_DRIVE_ID = "1cje4dOVOZI9m1PWCbebjjbqyuI8CENIt"
 
-creds_info = json.loads(os.environ["GOOGLE_DRIVE_KEY"])
-creds = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
+# =========================
+# CREDENCIALES
+# =========================
+creds_json = json.loads(os.environ["GOOGLE_DRIVE_KEY"])
 
-service = build("drive", "v3", credentials=creds)
+credentials = service_account.Credentials.from_service_account_info(
+    creds_json,
+    scopes=["https://www.googleapis.com/auth/drive"]
+)
 
+service = build("drive", "v3", credentials=credentials)
+
+# =========================
+# SUBIR CSV
+# =========================
 file_metadata = {
-    "name": "historial_portafolio.csv"
+    "name": ARCHIVO,
+    "parents": [SHARED_DRIVE_ID]
 }
 
-media = MediaFileUpload(
-    "historial_portafolio.csv",
-    mimetype="text/csv",
-    resumable=True
-)
+media = MediaFileUpload(ARCHIVO, mimetype="text/csv", resumable=True)
 
 service.files().create(
     body=file_metadata,
     media_body=media,
-    fields="id"
+    supportsAllDrives=True
 ).execute()
 
-print("☁️ CSV subido a Google Drive")
+print("☁️ CSV subido correctamente a Google Drive")
