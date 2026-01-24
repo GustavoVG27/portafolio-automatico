@@ -1,1 +1,29 @@
+name: Resumen Mensual Portafolio
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 1 * *"   # Día 1 de cada mes - 7:00 am Perú
+
+jobs:
+  mensual:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          pip install matplotlib
+
+      - name: Ejecutar resumen mensual
+        run: python resumen_mensual.py
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
 
