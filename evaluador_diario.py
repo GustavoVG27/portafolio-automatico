@@ -54,24 +54,6 @@ mensaje = []
 mensaje.append("<h1>📊 Evaluación diaria del portafolio</h1>")
 
 # =========================
-# CSV DETALLADO (PRO)
-# =========================
-campos_csv = [
-    "fecha",
-    "ticker",
-    "sector",
-    "cantidad",
-    "inversion_inicial",
-    "precio_actual",
-    "valor_actual",
-    "ganancia_usd",
-    "ganancia_pct"
-]
-
-archivo_existe = os.path.isfile(archivo_csv)
-filas_csv = []
-
-# =========================
 # PROCESO POR SECTOR
 # =========================
 for sector, tickers in SECTORES.items():
@@ -95,7 +77,9 @@ for sector, tickers in SECTORES.items():
 
         ranking.append((ticker, roi))
 
+        # =========================
         # ALERTAS
+        # =========================
         if roi >= UMBRAL_ALERTA:
             alertas.append(f"🟢 <b>{ticker}</b> sube fuerte <b>+{roi:.2f}%</b>")
         elif roi <= -UMBRAL_ALERTA:
@@ -103,7 +87,9 @@ for sector, tickers in SECTORES.items():
 
         color = "green" if roi >= 0 else "red"
 
-        # BLOQUE EN EL CORREO
+        # =========================
+        # BLOQUE DEL ACTIVO EN EL CORREO
+        # =========================
         mensaje.append(f"""
         <p>
         <b>{ticker} ({datos['nombre']})</b><br>
@@ -117,60 +103,60 @@ for sector, tickers in SECTORES.items():
         </p>
         """)
 
-        # FILA CSV (DETALLADO)
-        filas_csv.append({
-            "fecha": fecha_hoy,
-            "ticker": ticker,
-            "sector": sector,
-            "cantidad": datos["cantidad"],
-            "inversion_inicial": round(datos["invertido"], 2),
-            "precio_actual": round(precio_actual, 2),
-            "valor_actual": round(valor_actual, 2),
-            "ganancia_usd": round(ganancia, 2),
-            "ganancia_pct": round(roi, 2)
-        })
+        # =========================
+        # GUARDAR CSV POR ACTIVO
+        # =========================
+        archivo_existe = os.path.isfile(archivo_csv)
+
+        with open(archivo_csv, "a", newline="", encoding="utf-8") as f:
+            fieldnames = [
+                "fecha",
+                "ticker",
+                "sector",
+                "cantidad",
+                "inversion_inicial",
+                "precio_actual",
+                "valor_actual",
+                "ganancia_usd",
+                "ganancia_pct"
+            ]
+
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+
+            if not archivo_existe:
+                writer.writeheader()
+
+            writer.writerow({
+                "fecha": fecha_hoy,
+                "ticker": ticker,
+                "sector": sector,
+                "cantidad": round(datos["cantidad"], 6),
+                "inversion_inicial": round(datos["invertido"], 2),
+                "precio_actual": round(precio_actual, 2),
+                "valor_actual": round(valor_actual, 2),
+                "ganancia_usd": round(ganancia, 2),
+                "ganancia_pct": round(roi, 2)
+            })
 
 # =========================
-# 🚨 ALERTAS
+# ALERTAS DEL DÍA
 # =========================
 if alertas:
-    mensaje.append("<hr><h2 style='color:red;'>🚨 ALERTAS DEL DÍA</h2><ul>")
+    mensaje.append("""
+    <hr>
+    <h2 style="color:red;">🚨 ALERTAS DEL DÍA</h2>
+    <ul>
+    """)
     for alerta in alertas:
         mensaje.append(f"<li>{alerta}</li>")
     mensaje.append("</ul>")
-
-# =========================
-# COMPARACIÓN VS AYER
-# =========================
-ayer_total = None
-if archivo_existe:
-    with open(archivo_csv, "r", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-        if rows:
-            ultimo_dia = rows[-1]["fecha"]
-            ayer_total = sum(
-                float(r["valor_actual"]) for r in rows if r["fecha"] == ultimo_dia
-            )
-
-mensaje.append("<hr><h2>📊 Comparación vs ayer</h2>")
-
-if ayer_total:
-    variacion = total_actual - ayer_total
-    porcentaje = (variacion / ayer_total) * 100
-    mensaje.append(f"""
-    Ayer: ${ayer_total:.2f}<br>
-    Hoy: ${total_actual:.2f}<br>
-    Variación: ${variacion:+.2f} ({porcentaje:+.2f}%)
-    """)
-else:
-    mensaje.append("No hay datos de ayer.")
 
 # =========================
 # RANKING
 # =========================
 ranking.sort(key=lambda x: x[1], reverse=True)
 
-mensaje.append("<hr><h2>🏆 Ranking</h2>")
+mensaje.append("<hr><h2>🏆 Ranking del día</h2>")
 for i, (ticker, roi) in enumerate(ranking, 1):
     mensaje.append(f"{i}️⃣ {ticker} ({roi:+.2f}%)<br>")
 
@@ -178,23 +164,15 @@ for i, (ticker, roi) in enumerate(ranking, 1):
 # COMENTARIO ANALISTA
 # =========================
 mejor = ranking[0]
+
 mensaje.append(f"""
 <hr>
 <h2>🧠 Comentario del analista</h2>
-El portafolio se mantiene estable.
-El activo más destacado del día fue
-<b>{mejor[0]}</b> con una variación de
+El portafolio muestra un comportamiento general estable.
+El activo más destacado de la jornada fue
+<b>{mejor[0]}</b>, con una variación de
 <b>{mejor[1]:+.2f}%</b>.
 """)
-
-# =========================
-# GUARDAR CSV DETALLADO
-# =========================
-with open(archivo_csv, "a", newline="", encoding="utf-8") as f:
-    writer = csv.DictWriter(f, fieldnames=campos_csv)
-    if not archivo_existe:
-        writer.writeheader()
-    writer.writerows(filas_csv)
 
 # =========================
 # ENVIAR CORREO
@@ -211,6 +189,7 @@ with smtplib.SMTP("smtp.gmail.com", 587) as server:
     server.send_message(msg)
 
 print("📧 Correo enviado correctamente")
+
 
 
 
