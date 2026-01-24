@@ -37,7 +37,7 @@ for ticker, datos in PORTAFOLIO.items():
     hist = accion.history(period="1d")
 
     if hist.empty:
-        mensaje.append(f"⚠️ {ticker}: sin datos\n")
+        mensaje.append(f"⚠️ {ticker}: sin datos disponibles\n")
         continue
 
     precio_actual = float(hist["Close"].iloc[-1])
@@ -72,7 +72,7 @@ mensaje.append(
 mensaje_final = "\n".join(mensaje)
 
 # =========================
-# GUARDAR CSV
+# GUARDAR CSV (LOCAL DEL RUN)
 # =========================
 existe = os.path.isfile(archivo_csv)
 
@@ -103,6 +103,3 @@ with smtplib.SMTP("smtp.gmail.com", 587) as server:
     server.send_message(msg)
 
 print("📧 Correo enviado correctamente")
-
-
-
