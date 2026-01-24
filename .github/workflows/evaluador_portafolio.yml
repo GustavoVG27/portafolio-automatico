@@ -1,9 +1,9 @@
 name: Evaluador Diario Portafolio
 
 on:
-  workflow_dispatch:        # permite ejecutarlo manualmente
+  workflow_dispatch:
   schedule:
-    - cron: "0 22 * * *"    # 5:00 p.m. hora Perú (UTC-5)
+    - cron: "0 22 * * *"   # 5:00 p.m. Perú (UTC-5)
 
 jobs:
   evaluar:
@@ -34,3 +34,4 @@ jobs:
         env:
           GOOGLE_DRIVE_KEY: ${{ secrets.GOOGLE_DRIVE_KEY }}
         run: python subir_drive.py
+
