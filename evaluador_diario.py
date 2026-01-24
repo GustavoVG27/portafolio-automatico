@@ -54,6 +54,24 @@ mensaje = []
 mensaje.append("<h1>📊 Evaluación diaria del portafolio</h1>")
 
 # =========================
+# CSV DETALLADO (PRO)
+# =========================
+campos_csv = [
+    "fecha",
+    "ticker",
+    "sector",
+    "cantidad",
+    "inversion_inicial",
+    "precio_actual",
+    "valor_actual",
+    "ganancia_usd",
+    "ganancia_pct"
+]
+
+archivo_existe = os.path.isfile(archivo_csv)
+filas_csv = []
+
+# =========================
 # PROCESO POR SECTOR
 # =========================
 for sector, tickers in SECTORES.items():
@@ -85,7 +103,7 @@ for sector, tickers in SECTORES.items():
 
         color = "green" if roi >= 0 else "red"
 
-        # 🔴 BLOQUE COMPLETO DEL ACTIVO (CORREGIDO)
+        # BLOQUE EN EL CORREO
         mensaje.append(f"""
         <p>
         <b>{ticker} ({datos['nombre']})</b><br>
@@ -99,15 +117,24 @@ for sector, tickers in SECTORES.items():
         </p>
         """)
 
+        # FILA CSV (DETALLADO)
+        filas_csv.append({
+            "fecha": fecha_hoy,
+            "ticker": ticker,
+            "sector": sector,
+            "cantidad": datos["cantidad"],
+            "inversion_inicial": round(datos["invertido"], 2),
+            "precio_actual": round(precio_actual, 2),
+            "valor_actual": round(valor_actual, 2),
+            "ganancia_usd": round(ganancia, 2),
+            "ganancia_pct": round(roi, 2)
+        })
+
 # =========================
-# 🚨 ALERTAS DEL DÍA
+# 🚨 ALERTAS
 # =========================
 if alertas:
-    mensaje.append("""
-    <hr>
-    <h2 style="color:red;">🚨 ALERTAS DEL DÍA</h2>
-    <ul>
-    """)
+    mensaje.append("<hr><h2 style='color:red;'>🚨 ALERTAS DEL DÍA</h2><ul>")
     for alerta in alertas:
         mensaje.append(f"<li>{alerta}</li>")
     mensaje.append("</ul>")
@@ -115,20 +142,23 @@ if alertas:
 # =========================
 # COMPARACIÓN VS AYER
 # =========================
-ayer = None
-if os.path.isfile(archivo_csv):
-    with open(archivo_csv, "r") as f:
-        rows = list(csv.reader(f))
-        if len(rows) > 1:
-            ayer = float(rows[-1][2])
+ayer_total = None
+if archivo_existe:
+    with open(archivo_csv, "r", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+        if rows:
+            ultimo_dia = rows[-1]["fecha"]
+            ayer_total = sum(
+                float(r["valor_actual"]) for r in rows if r["fecha"] == ultimo_dia
+            )
 
 mensaje.append("<hr><h2>📊 Comparación vs ayer</h2>")
 
-if ayer:
-    variacion = total_actual - ayer
-    porcentaje = (variacion / ayer) * 100
+if ayer_total:
+    variacion = total_actual - ayer_total
+    porcentaje = (variacion / ayer_total) * 100
     mensaje.append(f"""
-    Ayer: ${ayer:.2f}<br>
+    Ayer: ${ayer_total:.2f}<br>
     Hoy: ${total_actual:.2f}<br>
     Variación: ${variacion:+.2f} ({porcentaje:+.2f}%)
     """)
@@ -151,28 +181,20 @@ mejor = ranking[0]
 mensaje.append(f"""
 <hr>
 <h2>🧠 Comentario del analista</h2>
-El portafolio muestra un desempeño estable.
-El activo más destacado de la jornada fue
-<b>{mejor[0]}</b>, con una variación de
+El portafolio se mantiene estable.
+El activo más destacado del día fue
+<b>{mejor[0]}</b> con una variación de
 <b>{mejor[1]:+.2f}%</b>.
 """)
 
 # =========================
-# GUARDAR CSV
+# GUARDAR CSV DETALLADO
 # =========================
-resultado = total_actual - total_invertido
-archivo_existe = os.path.isfile(archivo_csv)
-
-with open(archivo_csv, "a", newline="") as f:
-    writer = csv.writer(f)
+with open(archivo_csv, "a", newline="", encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=campos_csv)
     if not archivo_existe:
-        writer.writerow(["fecha", "total_invertido", "total_actual", "resultado"])
-    writer.writerow([
-        fecha_hoy,
-        round(total_invertido, 2),
-        round(total_actual, 2),
-        round(resultado, 2)
-    ])
+        writer.writeheader()
+    writer.writerows(filas_csv)
 
 # =========================
 # ENVIAR CORREO
@@ -189,6 +211,7 @@ with smtplib.SMTP("smtp.gmail.com", 587) as server:
     server.send_message(msg)
 
 print("📧 Correo enviado correctamente")
+
 
 
 
