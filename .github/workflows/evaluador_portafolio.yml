@@ -1,11 +1,12 @@
-name: Evaluador Diario Portafolio
+name: Prueba Evaluador Diario
 
+# -------------------------
+# Activación inmediata
+# -------------------------
 on:
-  workflow_dispatch:
+  workflow_dispatch:   # Permite ejecutar manualmente si quieres
   schedule:
-    - cron: "50 23 * * *"  # 18:50 Perú → 23:50 UTC
-
-
+    - cron: "* * * * *"   # Se ejecuta cada minuto hasta que lo desactives
 
 jobs:
   evaluar:
@@ -25,9 +26,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install yfinance
 
-      - name: Ejecutar evaluador
+      - name: Ejecutar evaluador diario
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: python evaluador_diario.py
+
