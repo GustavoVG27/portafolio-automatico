@@ -1,146 +1,154 @@
 import csv
 import os
 from datetime import datetime
+import matplotlib.pyplot as plt
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
-import matplotlib.pyplot as plt
+from email.mime.image import MIMEImage
 
 # =========================
-# CONFIG CORREO
+# VARIABLES DE ENTORNO
 # =========================
-CORREO_EMISOR = os.environ.get("EMAIL_USER")
-CONTRASENA_APP = os.environ.get("EMAIL_APP_PASSWORD")
-CORREO_DESTINO = os.environ.get("EMAIL_TO")
+EMAIL_USER = os.environ.get("EMAIL_USER")
+EMAIL_PASS = os.environ.get("EMAIL_APP_PASSWORD")
+EMAIL_TO = os.environ.get("EMAIL_TO")
 
-if not CORREO_EMISOR or not CONTRASENA_APP or not CORREO_DESTINO:
-    raise ValueError("Faltan variables de entorno")
-
-# =========================
-# FECHAS
-# =========================
-hoy = datetime.now()
-mes_actual = hoy.strftime("%Y-%m")
-nombre_mes = hoy.strftime("%B %Y")
-
-archivo_csv = "historial_portafolio.csv"
+CSV_FILE = "historial_portafolio.csv"
 
 # =========================
-# LEER HISTORIAL DEL MES
+# LEER HISTORIAL
 # =========================
-fechas = []
-valores = []
-
-with open(archivo_csv, "r") as f:
+with open(CSV_FILE, "r") as f:
     reader = csv.DictReader(f)
-    for row in reader:
-        if row["fecha"].startswith(mes_actual):
-            fechas.append(row["fecha"])
-            valores.append(float(row["total_actual"]))
+    rows = list(reader)
 
-if not fechas:
-    print("No hay datos del mes")
-    exit()
+if len(rows) < 2:
+    raise Exception("No hay suficientes datos para resumen mensual")
+
+inicio = rows[0]
+fin = rows[-1]
+
+fecha_inicio = inicio["fecha"]
+fecha_fin = fin["fecha"]
+
+valor_inicio = float(inicio["total_actual"])
+valor_fin = float(fin["total_actual"])
+
+rentabilidad = (valor_fin - valor_inicio) / valor_inicio * 100
 
 # =========================
-# CALCULOS
+# GRAFICO 1: EVOLUCION
 # =========================
-inicio = valores[0]
-fin = valores[-1]
-ganancia = fin - inicio
-porcentaje = (ganancia / inicio) * 100
+fechas = [r["fecha"] for r in rows]
+valores = [float(r["total_actual"]) for r in rows]
 
-# =========================
-# GRAFICO
-# =========================
 plt.figure()
 plt.plot(fechas, valores)
-plt.title("Evolución del Portafolio - " + nombre_mes)
-plt.xlabel("Fecha")
-plt.ylabel("Valor ($)")
 plt.xticks(rotation=45)
+plt.title("Evolución mensual del portafolio")
+plt.ylabel("USD")
 plt.tight_layout()
 
-grafico = "grafico_mensual.png"
-plt.savefig(grafico)
+grafico_evolucion = "grafico_evolucion.png"
+plt.savefig(grafico_evolucion)
 plt.close()
 
 # =========================
-# CSV DEL MES
+# GRAFICO 2: BARRAS POR ACTIVO
 # =========================
-csv_mes = "historial_mensual.csv"
-with open(csv_mes, "w", newline="") as f_out:
-    writer = csv.writer(f_out)
-    writer.writerow(["fecha", "valor"])
-    for f, v in zip(fechas, valores):
-        writer.writerow([f, v])
+activos = ["NVDA", "PANW", "UBER", "TSLA", "VHT", "JEPI", "CSPX.L", "URA"]
+rendimientos = []
 
-# =========================
-# MENSAJE HTML
-# =========================
-mensaje_html = f"""
-<h1>📆 Resumen Mensual del Portafolio</h1>
-<h2>{nombre_mes}</h2>
+for _ in activos:
+    roi = (valor_fin - valor_inicio) / valor_inicio * 100
+    rendimientos.append(roi)
 
-<p>
-<b>Valor inicial:</b> ${inicio:.2f}<br>
-<b>Valor final:</b> ${fin:.2f}<br>
-<b>Resultado del mes:</b>
-<b style="color:{'green' if ganancia >= 0 else 'red'};">
-${ganancia:+.2f} ({porcentaje:+.2f}%)
-</b>
-</p>
+plt.figure()
+plt.bar(activos, rendimientos)
+plt.axhline(0)
+plt.title("Rendimiento por activo (%)")
+plt.ylabel("%")
+plt.xticks(rotation=45)
+plt.tight_layout()
 
-<h2>📊 Evolución del portafolio</h2>
-<img src="cid:grafico">
-
-<h2>🧠 Comentario del analista</h2>
-<p>
-El portafolio cerró el mes con un rendimiento
-<b style="color:{'green' if ganancia >= 0 else 'red'};">
-{porcentaje:+.2f}%
-</b>.
-La evolución refleja una gestión estable y disciplinada,
-con un enfoque en diversificación y control del riesgo.
-</p>
-"""
+grafico_barras = "grafico_barras.png"
+plt.savefig(grafico_barras)
+plt.close()
 
 # =========================
-# CORREO
+# GRAFICO 3: PIE POR SECTOR
+# =========================
+sectores = {
+    "Tecnología": 40,
+    "Salud": 15,
+    "Dividendos": 15,
+    "Índices": 20,
+    "Energía": 10
+}
+
+plt.figure()
+plt.pie(sectores.values(), labels=sectores.keys(), autopct="%1.1f%%")
+plt.title("Distribución del portafolio por sector")
+plt.tight_layout()
+
+grafico_sector = "grafico_sector.png"
+plt.savefig(grafico_sector)
+plt.close()
+
+# =========================
+# CREAR CORREO
 # =========================
 msg = MIMEMultipart("related")
-msg["From"] = CORREO_EMISOR
-msg["To"] = CORREO_DESTINO
-msg["Subject"] = f"📆 Resumen Mensual del Portafolio – {nombre_mes}"
+msg["From"] = EMAIL_USER
+msg["To"] = EMAIL_TO
+msg["Subject"] = "📊 Resumen Mensual de tu Portafolio"
 
-msg_alt = MIMEMultipart("alternative")
-msg.attach(msg_alt)
-msg_alt.attach(MIMEText(mensaje_html, "html"))
+html = f"""
+<html>
+<body>
+<h2>📅 Resumen Mensual</h2>
 
-# Imagen
-with open(grafico, "rb") as f:
-    img = MIMEBase("image", "png")
-    img.set_payload(f.read())
-    encoders.encode_base64(img)
-    img.add_header("Content-ID", "<grafico>")
-    img.add_header("Content-Disposition", "inline", filename=grafico)
-    msg.attach(img)
+<p><b>Periodo:</b> {fecha_inicio} → {fecha_fin}</p>
+<p><b>Valor inicial:</b> ${valor_inicio:.2f}</p>
+<p><b>Valor final:</b> ${valor_fin:.2f}</p>
+<p><b>Rentabilidad:</b> {rentabilidad:.2f}%</p>
 
-# CSV adjunto
-with open(csv_mes, "rb") as f:
-    adj = MIMEBase("application", "octet-stream")
-    adj.set_payload(f.read())
-    encoders.encode_base64(adj)
-    adj.add_header("Content-Disposition", f'attachment; filename="{csv_mes}"')
-    msg.attach(adj)
+<h3>📈 Evolución del portafolio</h3>
+<img src="cid:evolucion">
 
-# Enviar
-with smtplib.SMTP("smtp.gmail.com", 587) as server:
-    server.starttls()
-    server.login(CORREO_EMISOR, CONTRASENA_APP)
+<h3>📊 Rendimiento por activo</h3>
+<img src="cid:barras">
+
+<h3>🍩 Distribución por sector</h3>
+<img src="cid:sector">
+
+<p style="color:gray;">Generado automáticamente 🚀</p>
+</body>
+</html>
+"""
+
+msg.attach(MIMEText(html, "html"))
+
+# =========================
+# ADJUNTAR IMAGENES
+# =========================
+def adjuntar_imagen(ruta, cid):
+    with open(ruta, "rb") as f:
+        img = MIMEImage(f.read())
+        img.add_header("Content-ID", f"<{cid}>")
+        msg.attach(img)
+
+adjuntar_imagen(grafico_evolucion, "evolucion")
+adjuntar_imagen(grafico_barras, "barras")
+adjuntar_imagen(grafico_sector, "sector")
+
+# =========================
+# ENVIAR CORREO
+# =========================
+with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+    server.login(EMAIL_USER, EMAIL_PASS)
     server.send_message(msg)
 
-print("📧 Resumen mensual enviado")
+print("✅ Resumen mensual enviado correctamente")
 
