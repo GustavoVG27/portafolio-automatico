@@ -5,18 +5,30 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from portfolio import PORTAFOLIO
-import os  # ✅ IMPORT CORREGIDO
+import os
 
 # =========================
-# CONFIGURACIÓN DE CORREO (VARIABLES DE ENTORNO)
+# CONFIGURACIÓN DE CORREO
 # =========================
 CORREO_EMISOR = os.environ.get("EMAIL_USER")
 CONTRASENA_APP = os.environ.get("EMAIL_APP_PASSWORD")
 CORREO_DESTINO = os.environ.get("EMAIL_TO")
 
-# Validación básica
 if not CORREO_EMISOR or not CONTRASENA_APP or not CORREO_DESTINO:
     raise ValueError("❌ Faltan variables de entorno para el correo")
+
+# =========================
+# CONFIGURACIÓN WHATSAPP (TWILIO)
+# =========================
+TWILIO_SID = os.environ.get("TWILIO_SID")
+TWILIO_TOKEN = os.environ.get("TWILIO_TOKEN")
+WHATSAPP_TO = os.environ.get("WHATSAPP_TO")
+
+USAR_WHATSAPP = all([TWILIO_SID, TWILIO_TOKEN, WHATSAPP_TO])
+
+if USAR_WHATSAPP:
+    from twilio.rest import Client
+    twilio_client = Client(TWILIO_SID, TWILIO_TOKEN)
 
 # =========================
 # VARIABLES GENERALES
@@ -52,12 +64,7 @@ for ticker, datos in PORTAFOLIO.items():
     total_invertido += datos["invertido"]
     total_actual += valor_inversion
 
-    if roi > 0:
-        emoji = "🟢"
-    elif roi < 0:
-        emoji = "🔴"
-    else:
-        emoji = "⚪"
+    emoji = "🟢" if roi > 0 else "🔴" if roi < 0 else "⚪"
 
     bloque = (
         f"{emoji} {ticker} ({datos['nombre']})\n"
@@ -120,4 +127,21 @@ try:
     print("📧 Correo enviado correctamente")
 except Exception as e:
     print("❌ Error al enviar correo:", e)
+
+# =========================
+# ENVIAR WHATSAPP
+# =========================
+if USAR_WHATSAPP:
+    try:
+        twilio_client.messages.create(
+            from_="whatsapp:+14155238886",  # Sandbox oficial Twilio
+            to=WHATSAPP_TO,
+            body=mensaje_final
+        )
+        print("📲 WhatsApp enviado correctamente")
+    except Exception as e:
+        print("❌ Error al enviar WhatsApp:", e)
+else:
+    print("⚠️ WhatsApp no configurado (faltan variables de entorno)")
+
 
