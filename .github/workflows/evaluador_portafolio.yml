@@ -1,35 +1,9 @@
-name: Prueba Evaluador Diario
-
-# -------------------------
-# Activación inmediata
-# -------------------------
-on:
-  workflow_dispatch:   # Permite ejecutar manualmente si quieres
-  schedule:
-    - cron: "* * * * *"   # Se ejecuta cada minuto hasta que lo desactives
-
-jobs:
-  evaluar:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
-
-      - name: Configurar Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Instalar dependencias
+      - name: Guardar CSV en el repositorio
         run: |
-          python -m pip install --upgrade pip
-          pip install yfinance
+          git config --global user.email "tu-email@example.com"
+          git config --global user.name "TuNombre"
+          git add historial_portafolio.csv
+          git commit -m "Actualizar historial_portafolio - ${{ github.run_number }}"
+          git push
 
-      - name: Ejecutar evaluador diario
-        env:
-          EMAIL_USER: ${{ secrets.EMAIL_USER }}
-          EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
-          EMAIL_TO: ${{ secrets.EMAIL_TO }}
-        run: python evaluador_diario.py
 
