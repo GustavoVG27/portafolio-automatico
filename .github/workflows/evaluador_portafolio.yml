@@ -39,3 +39,4 @@ jobs:
           git add historial_portafolio.csv
           git diff --cached --quiet || git commit -m "Actualizar historial_portafolio - ${{ github.run_number }}"
           git push
+
