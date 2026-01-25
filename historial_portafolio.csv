@@ -1,1 +1,9 @@
 fecha,ticker,nombre,cantidad,inversion_inicial,precio_cierre,valor_actual,ganancia_usd,ganancia_pct
+2026-01-25,NVDA,NVIDIA Corp.,0.53573,100.0,100.54,0.54,0.54
+2026-01-25,PANW,Palo Alto Networks,0.10628,19.85,19.15,-0.7,-3.53
+2026-01-25,UBER,Uber Technologies,0.18434,15.0,15.17,0.17,1.15
+2026-01-25,TSLA,Tesla Inc.,0.03543,16.55,15.91,-0.64,-3.87
+2026-01-25,VHT,Vanguard Health Care ETF,0.11705,33.85,34.26,0.41,1.22
+2026-01-25,JEPI,JPMorgan Equity Premium Income ETF,0.58726,33.85,34.28,0.43,1.28
+2026-01-25,CSPX.L,iShares Core S&P 500 UCITS ETF,0.2964,219.74,219.85,0.11,0.05
+2026-01-25,URA,Global X Uranium ETF,0.52935,28.85,30.17,1.32,4.59
