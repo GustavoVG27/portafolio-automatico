@@ -58,7 +58,7 @@ mensaje.append("<h1>📊 Evaluación diaria del portafolio</h1>")
 # =========================
 # PROCESO POR SECTOR
 # =========================
-acciones_para_csv = []  # Guardar datos para CSV y adjuntar
+acciones_para_csv = []
 
 for sector, tickers in SECTORES.items():
     mensaje.append(f"<h2>{sector}</h2>")
@@ -103,7 +103,7 @@ for sector, tickers in SECTORES.items():
         </p>
         """)
 
-        # GUARDAR DATOS PARA CSV
+        # DATOS PARA CSV
         acciones_para_csv.append({
             "fecha": fecha_hoy,
             "ticker": ticker,
@@ -125,23 +125,37 @@ if alertas:
     mensaje.append("</ul>")
 
 # =========================
-# COMPARACIÓN VS AYER
+# COMPARACIÓN VS AYER (CORREGIDO)
 # =========================
 ayer_total = None
+
 if os.path.isfile(archivo_csv):
     with open(archivo_csv, "r") as f:
         rows = list(csv.DictReader(f))
+
         if rows:
-            ultimo_dia = rows[-1]["fecha"]
-            ayer_total = sum(float(r["valor_actual"]) for r in rows if r["fecha"] == ultimo_dia)
+            fechas = sorted(set(r["fecha"] for r in rows))
+
+            if len(fechas) >= 2:
+                fecha_ayer = fechas[-2]
+                ayer_total = sum(
+                    float(r["valor_actual"])
+                    for r in rows
+                    if r["fecha"] == fecha_ayer
+                )
 
 mensaje.append("<hr><h2>📊 Comparación vs ayer</h2>")
 if ayer_total:
     variacion = total_actual - ayer_total
-    porcentaje = (variacion / ayer_total) * 100
-    mensaje.append(f"Ayer: ${ayer_total:.2f}<br>Hoy: ${total_actual:.2f}<br>Variación: ${variacion:+.2f} ({porcentaje:+.2f}%)")
+    porcentaje = (variacion / ayer_total) * 100 if ayer_total != 0 else 0
+
+    mensaje.append(
+        f"Ayer: ${ayer_total:.2f}<br>"
+        f"Hoy: ${total_actual:.2f}<br>"
+        f"Variación: ${variacion:+.2f} ({porcentaje:+.2f}%)"
+    )
 else:
-    mensaje.append("No hay datos de ayer.")
+    mensaje.append("No hay datos suficientes para comparar con ayer.")
 
 # =========================
 # RANKING
@@ -159,13 +173,15 @@ mensaje.append(f"""
 <hr>
 <h2>🧠 Comentario del analista</h2>
 El portafolio muestra un desempeño estable.
-El activo más destacado de la jornada fue <b>{mejor[0]}</b> con una variación de <b>{mejor[1]:+.2f}%</b>.
+El activo más destacado de la jornada fue <b>{mejor[0]}</b>
+con una variación de <b>{mejor[1]:+.2f}%</b>.
 """)
 
 # =========================
 # GUARDAR CSV DETALLADO
 # =========================
 archivo_existe = os.path.isfile(archivo_csv)
+
 with open(archivo_csv, "a", newline="") as f:
     writer = csv.DictWriter(f, fieldnames=acciones_para_csv[0].keys())
     if not archivo_existe:
@@ -181,24 +197,23 @@ msg["From"] = CORREO_EMISOR
 msg["To"] = CORREO_DESTINO
 msg["Subject"] = f"📊 Evaluación diaria del portafolio - {fecha_hoy}"
 
-# Adjuntar mensaje HTML
 msg.attach(MIMEText("".join(mensaje), "html"))
 
-# Adjuntar CSV
 with open(archivo_csv, "rb") as f:
-    part = MIMEBase('application', 'octet-stream')
+    part = MIMEBase("application", "octet-stream")
     part.set_payload(f.read())
     encoders.encode_base64(part)
-    part.add_header('Content-Disposition', f'attachment; filename="historial_portafolio.csv"')
+    part.add_header(
+        "Content-Disposition",
+        'attachment; filename="historial_portafolio.csv"'
+    )
     msg.attach(part)
 
-# Enviar correo
 with smtplib.SMTP("smtp.gmail.com", 587) as server:
     server.starttls()
     server.login(CORREO_EMISOR, CONTRASENA_APP)
     server.send_message(msg)
 
 print("📧 Correo enviado correctamente con CSV adjunto")
-
 
 
