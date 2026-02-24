@@ -34,11 +34,12 @@ CSV_TOTALES = "historial_portafolio_totales.csv"
 # SECTORES
 # =========================
 SECTORES = {
-    "🧠 TECNOLOGÍA": ["NVDA", "PANW", "UBER", "TSLA"],
-    "🏥 SALUD": ["VHT"],
-    "💰 DIVIDENDOS": ["JEPI"],
+    "🧠 TECNOLOGÍA": ["NVDA", "PANW", "UBER"],
     "📈 S&P 500 / ÍNDICES": ["CSPX.L"],
-    "⚡ ENERGÍA": ["URA"]
+    "🏥 SALUD": ["VHT"],
+    "🌎 MERCADOS INTERNACIONALES": ["VXUS"],
+    "⚡ ENERGÍA": ["URA"],
+    "₿ CRIPTO": ["BTC-USD"]
 }
 
 UMBRAL_ALERTA = 3
@@ -199,6 +200,7 @@ with smtplib.SMTP("smtp.gmail.com", 587) as server:
     server.send_message(msg)
 
 print("📧 Correo enviado correctamente")
+
 
 
 
