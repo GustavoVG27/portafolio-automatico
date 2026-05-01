@@ -116,7 +116,7 @@ if alertas:
     mensaje.append("</ul>")
 
 # =========================
-# COMPARACIÓN VS AYER (FIX REAL)
+# COMPARACIÓN VS AYER
 # =========================
 ayer_total = None
 
@@ -156,6 +156,28 @@ mensaje.append(f"""
 <h2>🧠 Comentario del analista</h2>
 El activo más destacado fue <b>{mejor[0]}</b>
 con una variación de <b>{mejor[1]:+.2f}%</b>.
+""")
+
+# =========================
+# ✅ NUEVO: RESUMEN TOTAL
+# =========================
+ganancia_total = total_actual - total_invertido
+porcentaje_total = (ganancia_total / total_invertido) * 100 if total_invertido != 0 else 0
+
+color_total = "green" if ganancia_total >= 0 else "red"
+
+mensaje.append(f"""
+<hr>
+<h2>💼 Resumen total del portafolio</h2>
+
+<p>
+💰 <b>Total invertido:</b> ${total_invertido:.2f}<br>
+📈 <b>Valor actual:</b> ${total_actual:.2f}<br>
+💵 <b>Ganancia total:</b>
+<b style="color:{color_total};">
+${ganancia_total:+.2f} ({porcentaje_total:+.2f}%)
+</b>
+</p>
 """)
 
 # =========================
@@ -200,7 +222,4 @@ with smtplib.SMTP("smtp.gmail.com", 587) as server:
     server.send_message(msg)
 
 print("📧 Correo enviado correctamente")
-
-
-
 
