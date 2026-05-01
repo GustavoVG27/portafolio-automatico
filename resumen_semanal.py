@@ -24,38 +24,14 @@ if len(datos) < 5:
     print("No hay suficientes datos para resumen semanal")
     exit()
 
-# 🔍 DEBUG (puedes borrarlo luego)
-print("Columnas detectadas:", datos[0].keys())
-
-# =========================
-# DETECTAR COLUMNA CORRECTA
-# =========================
-posibles_claves = ["total_actual", "total", "balance", "valor"]
-
-clave_total = None
-for clave in posibles_claves:
-    if clave in datos[0]:
-        clave_total = clave
-        break
-
-if clave_total is None:
-    print("❌ Error: No se encontró columna válida en el CSV")
-    print("Columnas disponibles:", datos[0].keys())
-    exit()
-
-print(f"✅ Usando columna: {clave_total}")
-
 # =========================
 # FILTRAR ÚLTIMA SEMANA
 # =========================
 ultimos_7 = datos[-7:]
 
-try:
-    inicio = float(ultimos_7[0][clave_total])
-    fin = float(ultimos_7[-1][clave_total])
-except Exception as e:
-    print("❌ Error al convertir datos:", e)
-    exit()
+# ⚠️ Asegúrate que esta columna exista en tu CSV
+inicio = float(ultimos_7[0]["total_actual"])
+fin = float(ultimos_7[-1]["total_actual"])
 
 ganancia = fin - inicio
 porcentaje = (ganancia / inicio) * 100 if inicio != 0 else 0
@@ -94,12 +70,17 @@ ${ganancia:+.2f} ({porcentaje:+.2f}%)
 """
 
 # =========================
-# ENVIAR CORREO
+# VALIDAR EMAILS
 # =========================
 if not EMAIL_USER or not EMAIL_PASS or not EMAIL_TO:
-    print("❌ Faltan variables de entorno (EMAIL_USER, EMAIL_PASS, EMAIL_TO)")
+    print("❌ Faltan variables de entorno")
+    print("EMAIL_USER:", EMAIL_USER)
+    print("EMAIL_TO:", EMAIL_TO)
     exit()
 
+# =========================
+# ENVIAR CORREO
+# =========================
 msg = MIMEMultipart()
 msg["From"] = EMAIL_USER
 msg["To"] = EMAIL_TO
@@ -111,9 +92,9 @@ try:
     with smtplib.SMTP("smtp.gmail.com", 587) as s:
         s.starttls()
         s.login(EMAIL_USER, EMAIL_PASS)
+        print("✅ Login correcto")
         s.send_message(msg)
-
-    print("📧 Resumen semanal enviado correctamente")
+        print("📧 Correo enviado correctamente")
 
 except Exception as e:
     print("❌ Error enviando correo:", e)
