@@ -49,7 +49,18 @@ ranking = []
 total_invertido = 0.0
 total_actual = 0.0
 
-mensaje = ["<h1>📊 Evaluación diaria del portafolio</h1>"]
+# =========================
+# ESTILO GLOBAL
+# =========================
+mensaje = ["""
+<div style="
+font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial;
+background:#f4f6f8;
+padding:20px;
+">
+<h1 style="margin-bottom:20px;">📊 Evaluación diaria del portafolio</h1>
+"""]
+
 acciones_para_csv = []
 
 # =========================
@@ -80,35 +91,55 @@ for sector, tickers in SECTORES.items():
         elif roi <= -UMBRAL_ALERTA:
             alertas.append(f"🔴 <b>{ticker}</b> cae fuerte <b>{roi:.2f}%</b>")
 
-        color = "green" if roi >= 0 else "red"
-
-        # 🎨 TARJETA VISUAL
+        # 🎨 ESTILO TARJETA
         if roi >= 0:
-            fondo = "#e6f4ea"
             borde = "#34a853"
+            badge = "#e6f4ea"
         else:
-            fondo = "#fce8e6"
             borde = "#ea4335"
+            badge = "#fce8e6"
 
         mensaje.append(f"""
         <div style="
-        background:{fondo};
-        border-left:5px solid {borde};
-        padding:12px;
-        border-radius:8px;
-        margin-bottom:10px;
+        background:#ffffff;
+        border-radius:12px;
+        padding:16px;
+        margin-bottom:12px;
+        box-shadow:0 2px 6px rgba(0,0,0,0.06);
+        border-left:6px solid {borde};
         ">
 
-        <b style="font-size:16px;">{ticker} ({datos['nombre']})</b><br>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="font-size:16px; font-weight:600;">
+                    {ticker}
+                </div>
+                <div style="font-size:13px; color:#666;">
+                    {datos['nombre']}
+                </div>
+            </div>
 
-        📦 Cantidad de acciones: {datos['cantidad']}<br>
-        💰 Inversión inicial: ${datos['invertido']:.2f}<br>
-        📈 Valor actual: ${valor_actual:.2f}<br>
+            <div style="
+                background:{badge};
+                padding:6px 10px;
+                border-radius:20px;
+                font-size:13px;
+                font-weight:600;
+                color:{borde};
+            ">
+                {roi:+.2f}%
+            </div>
+        </div>
 
-        💵 Ganancia:
-        <b style="color:{color}; font-size:15px;">
-        ${ganancia:+.2f} ({roi:+.2f}%)
-        </b>
+        <div style="margin-top:10px; font-size:14px;">
+        📦 {datos['cantidad']} acciones<br>
+        💰 Inversión: ${datos['invertido']:.2f}<br>
+        📈 Valor: ${valor_actual:.2f}
+        </div>
+
+        <div style="margin-top:8px; font-size:15px; font-weight:600; color:{borde};">
+        ${ganancia:+.2f}
+        </div>
 
         </div>
         """)
@@ -177,29 +208,45 @@ con una variación de <b>{mejor[1]:+.2f}%</b>.
 """)
 
 # =========================
-# RESUMEN TOTAL (CARD)
+# RESUMEN TOTAL (PREMIUM)
 # =========================
 ganancia_total = total_actual - total_invertido
 porcentaje_total = (ganancia_total / total_invertido) * 100 if total_invertido != 0 else 0
-
 color_total = "green" if ganancia_total >= 0 else "red"
 
 mensaje.append(f"""
-<hr>
-<div style="background:#f5f7fa;padding:15px;border-radius:10px;">
-<h2>💼 Resumen total del portafolio</h2>
+<div style="
+background:#ffffff;
+border-radius:14px;
+padding:20px;
+margin-top:20px;
+box-shadow:0 4px 10px rgba(0,0,0,0.08);
+">
 
-<p>
-💰 <b>Total invertido:</b> ${total_invertido:.2f}<br>
-📈 <b>Valor actual:</b> ${total_actual:.2f}<br>
-💵 <b>Ganancia total:</b>
-<b style="color:{color_total};">
-${ganancia_total:+.2f} ({porcentaje_total:+.2f}%)
-</b>
-</p>
+<h2 style="margin-bottom:10px;">💼 Resumen del portafolio</h2>
+
+<div style="font-size:14px; color:#666;">
+Total invertido
+</div>
+<div style="font-size:20px; font-weight:600;">
+${total_invertido:.2f}
+</div>
+
+<div style="margin-top:10px; font-size:14px; color:#666;">
+Valor actual
+</div>
+<div style="font-size:20px; font-weight:600;">
+${total_actual:.2f}
+</div>
+
+<div style="margin-top:15px; font-size:18px; font-weight:700; color:{color_total};">
+{ganancia_total:+.2f} ({porcentaje_total:+.2f}%)
+</div>
 
 </div>
 """)
+
+mensaje.append("</div>")
 
 # =========================
 # GUARDAR CSV DETALLADO
